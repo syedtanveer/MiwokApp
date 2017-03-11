@@ -1,6 +1,8 @@
 package com.example.android.miwok;
 
+import android.content.Context;
 import android.graphics.Color;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -12,16 +14,44 @@ import java.util.ArrayList;
 
 public class PhraseActivity extends AppCompatActivity {
     private MediaPlayer mp;
+    private AudioManager audioManager;
+    private AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                // The AUDIOFOCUS_LOSS_TRANSIENT case means that we've lost audio focus for a
+                // short amount of time. The AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK case means that
+                // our app is allowed to continue playing sound but at a lower volume. We'll treat
+                // both cases the same way because our app is playing short sound files.
+
+                // Pause playback and reset player to the start of the file. That way, we can
+                // play the word from the beginning when we resume playback.
+                mp.pause();
+                mp.seekTo(0);
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                // The AUDIOFOCUS_GAIN case means we have regained focus and can resume playback.
+                mp.start();
+            } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                // The AUDIOFOCUS_LOSS case means we've lost audio focus and
+                // Stop playback and clean up resources
+                releaseMediaPlayer();
+            }
+        }
+    };
     private MediaPlayer.OnCompletionListener mCompletionListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mediaP) {
             releaseMediaPlayer();
         }
     };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.word_list);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
         final ArrayList<Word> words = new ArrayList<Word>();
         words.add(new Word("Where are you going?" ,"minto wuksus", R.raw.phrase_where_are_you_going));
         words.add(new Word("What is your name?", "tinnә oyaase'nә", R.raw.phrase_what_is_your_name));
@@ -42,13 +72,17 @@ public class PhraseActivity extends AppCompatActivity {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-                // words.get(position) returns an object
-                // getAudioResourceId is called on the returned object by get()
-                ///release the media player resources if another call has beeen triggered
-                releaseMediaPlayer();
-                mp = MediaPlayer.create(PhraseActivity.this, (words.get(position)).getAudioResourceId());
-                mp.start();
-                mp.setOnCompletionListener(mCompletionListener);
+                int result = audioManager.requestAudioFocus(onAudioFocusChangeListener, AudioManager.STREAM_MUSIC,
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+                if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    // words.get(position) returns an object
+                    // getAudioResourceId is called on the returned object by get()
+                    ///release the media player resources if another call has beeen triggered
+                    releaseMediaPlayer();
+                    mp = MediaPlayer.create(PhraseActivity.this, (words.get(position)).getAudioResourceId());
+                    mp.start();
+                    mp.setOnCompletionListener(mCompletionListener);
+                }
             }
         });
 
@@ -65,6 +99,7 @@ public class PhraseActivity extends AppCompatActivity {
             // is not configured to play an audio file at the moment.
             mp = null;
         }
+        audioManager.abandonAudioFocus(onAudioFocusChangeListener);
     }
     @Override
     protected void onStop() {
