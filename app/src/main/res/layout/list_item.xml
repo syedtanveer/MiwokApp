@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools = "http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
     android:layout_height="@dimen/list_item_height"
+        android:background="?android:attr/selectableItemBackground"
     android:orientation="horizontal">
     <ImageView
         android:id="@+id/image"
@@ -50,3 +55,4 @@
         android:layout_marginRight="16dp"
         android:src="@drawable/ic_play_arrow_white_36dp" />
 </RelativeLayout>
+</FrameLayout>
